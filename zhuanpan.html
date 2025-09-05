@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0,user-scalable=no" >
+    <title>转盘</title>
+    <link rel="stylesheet" href="zhuanpan.css">
+    <script src="zhuanpan.js" defer></script>
+
+    <style>
+        html,body{
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+
+.header0{
+    z-index: 0;
+    top: 0;
+}
+
+.header1{
+    display: flex;
+    width: 100%;
+    height: 10%;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 0;
+}  
+
+.content{
+    z-index: 0;
+    height: calc(100%-60px);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+}
+
+.wheel-wrapper{
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.wheel-container{
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+    text-align: center;
+}
+
+.pointer {
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-bottom: 40px solid red;
+    position: absolute;
+    top: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+}
+
+.pointer-line {
+    position: absolute;
+    left: 50%;
+    top: 70px;
+    transform: translateX(-50%);
+    width: 2px; 
+    height: 60px;
+    background: red;
+    z-index: 2;
+}
+
+#wheel{
+    width: 300px;
+    height:300px;
+    border-radius: 50%;
+    border: 5px solid #000;
+}
+
+.content1_button1{
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    cursor: pointer;
+    background: red;
+    color: #fff;
+    border: none;
+    font-weight: bold;
+    z-index: 10;
+}
+
+.header1_content1{
+    margin: 0;
+}
+
+.header1_button1{
+    cursor: pointer;
+}
+
+.login{
+    position: fixed;
+    display: flex;
+    z-index: 1000;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border: 5px solid;
+    flex-direction: column;
+    gap: 15px;
+    width: auto;
+    background-color: yellow;
+    align-items: center;
+    display: none;
+    padding: 25px 30px;
+}
+
+.login div{
+    display: flex;
+    align-items: center;
+    width: 280px;
+}
+
+.login div label{
+    width: 60px;
+}
+
+.login div input{
+    width: 220px;
+    padding: 5px;
+    margin-left: 5px;
+    box-sizing: border-box;
+}
+
+.close_login{
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    cursor: pointer;
+}
+
+.submitlogin{
+    cursor: pointer;
+    position: relative;
+    bottom: 0;
+    margin-left: 50%;
+    transform: translate(-50%);
+    padding: 6px 20px;
+}
+
+.mask{
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    background-color:rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    display: none;
+}
+
+#bottom{
+    position: fixed;
+    transform: translateX(-50%);
+    left: 50%;
+    bottom: 16px;
+    display: flex;
+    align-items: center;
+    text-align: center;
+    z-index: 0;
+}    
+    </style>
+
+    <script>
+        let isLogin =false;
+let isRotating =false;
+let wheelCtx;
+let wheelAngle =0;
+
+const wheelPrizes = [
+    {text:'黑铁', color: '#ff0000'},
+    {text:'青铜', color: '#ffff00'},
+    {text:'白银', color: '#00ff00'},
+    {text:'黄金', color: '#0000ff'},
+    {text:'铂金', color: '#f803e4ff'},
+    {text:'钻石', color: '#545555ff'},
+    {text:'超凡', color: '#ebf5ebff'},
+    {text:'神话', color: '#ff0202ff'},
+    {text:'赋能', color: '#7a0909'},
+    {text:'未定级', color: '#09f1f1ff'},
+    {text:'赋能在榜', color: '#407502ff'}
+];
+
+const prizeCount = wheelPrizes.length;
+const anglePerPrize = 360/prizeCount;
+
+function  checkLogin() {
+    const username = document.querySelector('.username0').value.trim();
+    const password = document.querySelector('.password0').value.trim();
+    if (!username||!password){
+        alert('用户名或密码不能为空,登录失败');
+        return false;
+    }
+    const validUser='caixukun';
+    const validPwd='123456';
+  
+    if(username===validUser&&password===validPwd){
+        alert('登陆成功,可前往抽奖');
+        isLogin = true;
+
+        document.querySelector('.login').style.display = 'none';
+        document.querySelector('.mask').style.display = 'none';
+        document.querySelector('.content1_button1').disabled = false;
+    }
+    else{
+        alert('用户名或密码错误');
+        return false;
+    }
+}
+
+window.onload = function() {
+    const loginBtn = document.querySelector('.header1_button1');
+    const loginModal = document.querySelector('.login');
+    const closeLogin = document.querySelector('.close_login');
+    const mask = document.querySelector('.mask');
+    const wheelStartBtn = document.querySelector('.content1_button1');
+    loginBtn.addEventListener('click', function() {
+        loginModal.style.display = 'flex';
+        mask.style.display = 'block';
+    })
+
+    closeLogin.addEventListener('click', function() {
+        loginModal.style.display = 'none';
+        mask.style.display = 'none';
+    })
+
+    initWheel();
+
+    wheelStartBtn.addEventListener('click',function() {
+
+        /*if(isLogin===false){
+            alert('请先登录');
+            loginModal.style.display = 'flex';
+            mask.style.display = 'block';
+            return;
+        }*/
+
+        rotateWheel();
+
+        if(isRotating) return;
+        rotateWheel();
+    });
+};
+
+function initWheel() {
+    const wheel = document.getElementById('wheel');
+    wheel.width = 400; 
+    wheel.height = 400;
+    wheelCtx = wheel.getContext('2d');
+    const centerX = wheel.width / 2; 
+    const centerY = wheel.height / 2; 
+    const radius = wheel.width / 2; 
+
+    wheelPrizes.forEach((prize, index) => {
+
+        const startAngle = (index * anglePerPrize - 90) * Math.PI / 180;
+        const endAngle = ((index + 1) * anglePerPrize - 90) * Math.PI / 180;
+
+        wheelCtx.beginPath();
+        wheelCtx.moveTo(centerX, centerY);
+        wheelCtx.arc(centerX, centerY, radius, startAngle, endAngle);
+        wheelCtx.closePath();
+        wheelCtx.fillStyle = prize.color;
+        wheelCtx.fill();
+        wheelCtx.strokeStyle = '#fff';
+        wheelCtx.lineWidth = 2;
+        wheelCtx.stroke();
+
+        wheelCtx.save();
+        wheelCtx.translate(centerX, centerY);
+        const textAngle = startAngle + (endAngle - startAngle) / 2;
+        wheelCtx.rotate(textAngle); 
+        wheelCtx.fillStyle = '#000'; 
+        wheelCtx.font = '18px Arial';
+        wheelCtx.textAlign = 'center';
+        wheelCtx.fillText(prize.text, radius - 20, 0);
+        wheelCtx.restore(); 
+    });
+
+    wheelCtx.beginPath();
+    wheelCtx.arc(centerX, centerY, 10, 0, 2 * Math.PI);
+    wheelCtx.fillStyle = '#000';
+    wheelCtx.fill();
+}
+
+function rotateWheel() {
+    isRotating = true;
+    const wheelStartBtn = document.querySelector('.content1_button1');
+    wheelStartBtn.disabled = true;
+
+    const randomAngle = 360 * (3 + Math.random() * 2) + Math.random() * 360;
+    const targetAngle = wheelAngle + randomAngle;
+    const speed = 10; 
+
+    function animate() {
+        if (wheelAngle < targetAngle) {
+            const currentSpeed = Math.max(speed - (wheelAngle / targetAngle) * speed, 0.5);
+            wheelAngle += currentSpeed;
+            drawRotatedWheel();
+            requestAnimationFrame(animate);
+        } else {
+            wheelAngle = targetAngle % 360;
+            drawRotatedWheel();
+            const prizeIndex = Math.floor((360 - wheelAngle) % 360 / anglePerPrize);
+            const prizeText = wheelPrizes[prizeIndex].text;
+            alert(`张立基的实力是：${wheelPrizes[prizeIndex].text}!`);
+
+            const msg = new SpeechSynthesisUtterance(`张立基的实力是：${prizeText}`);
+            window.speechSynthesis.speak(msg);
+
+            isRotating = false;
+            wheelStartBtn.disabled = false;
+        }
+    }
+    animate();
+}
+
+function drawRotatedWheel(angle=0) {
+    const wheel = document.getElementById('wheel');
+    const centerX = wheel.width / 2;
+    const centerY = wheel.height / 2;
+    const radius = wheel.width / 2;
+
+    wheelCtx.clearRect(0, 0, wheel.width, wheel.height);
+
+    wheelCtx.save();
+    wheelCtx.translate(centerX, centerY);
+    wheelCtx.rotate(wheelAngle * Math.PI / 180);
+    wheelCtx.translate(-centerX, -centerY);
+
+        wheelPrizes.forEach((prize, index) => {
+        const startAngle = (index * anglePerPrize - 90) * Math.PI / 180;
+        const endAngle = ((index + 1) * anglePerPrize - 90) * Math.PI / 180;
+
+        wheelCtx.beginPath();
+        wheelCtx.moveTo(centerX, centerY);
+        wheelCtx.arc(centerX, centerY, radius, startAngle, endAngle);
+        wheelCtx.closePath();
+        wheelCtx.fillStyle = prize.color;
+        wheelCtx.fill();
+        wheelCtx.strokeStyle = '#fff';
+        wheelCtx.lineWidth = 2;
+        wheelCtx.stroke();
+
+        wheelCtx.save();
+        wheelCtx.translate(centerX, centerY);
+        const textAngle = startAngle + (endAngle - startAngle) / 2;
+        wheelCtx.rotate(textAngle); 
+        wheelCtx.fillStyle = '#000'; 
+        wheelCtx.font = '18px Arial';
+        wheelCtx.textAlign = 'center';
+        wheelCtx.fillText(prize.text, radius - 20, 0);
+        wheelCtx.restore();
+    });
+
+    wheelCtx.beginPath();
+    wheelCtx.arc(centerX, centerY, 10, 0, 2 * Math.PI);
+    wheelCtx.fillStyle = '#000';
+    wheelCtx.fill();
+
+    wheelCtx.restore();
+}
+    </script>
+
+</head>
+<body>
+    
+        <div>
+            <header class="header0">
+                <div class="header1">
+                    <h1 class="header1_content1"><b>转盘</b></h1>
+                    <button class="header1_button1" type="button">登录</button>
+                </div>
+            </header>
+
+            <content class="content">
+                <div class="wheel-wrapper">
+                    <div class="wheel-container">
+                    <div class="pointer"></div>
+                    <div class="pointer-line">
+                    </div>
+                    <canvas id="wheel"></canvas>
+                    <button class="content1_button1"  type="button">开始</button>
+                    </div>
+                </div>
+            </content>
+
+            <bottom>
+                <p id="bottom">
+                祝您转的愉快
+                </p>
+            </bottom>
+        </div>
+    
+
+    <div class="mask"></div>
+    <form action="" onsubmit="return checkLogin()">
+        <div class="login">
+            <button class="close_login" type="button">x</button>
+            <h2>用户登陆界面</h2>
+            <div>
+                <label for="username0">用户名:</label>
+                <input type="text" class="username0" id="username0" placeholder="请输入用户名">
+            </div>
+            <div>
+                <label for="password0">密码: </label>
+                <input type="password" class="password0" id="password0" placeholder="请输入密码">
+            </div>
+            <button class="submitlogin" type="submit">登录</button> 
+        </div>   
+    </form>
+    
+</body>
+</html>
